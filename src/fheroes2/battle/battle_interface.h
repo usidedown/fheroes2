@@ -431,6 +431,7 @@ namespace Battle
         void EventShowOptions();
         void MouseLeftClickBoardAction( const int themes, const Cell & cell, const bool isConfirmed, Actions & actions );
         bool MousePressRightBoardAction( const Cell & cell ) const;
+        int intentDirectionToAttackDirection(int dir) const;
 
         int GetBattleCursor( std::string & statusMsg ) const;
         int GetBattleSpellCursor( std::string & statusMsg ) const;

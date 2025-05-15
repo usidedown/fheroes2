@@ -38,12 +38,14 @@ namespace Battle
     {
         UNKNOWN = 0x00,
         TOP_LEFT = 0x01,
-        TOP_RIGHT = 0x02,
-        RIGHT = 0x04,
-        BOTTOM_RIGHT = 0x08,
-        BOTTOM_LEFT = 0x10,
-        LEFT = 0x20,
-        CENTER = 0x40,
+        UP = 0x02,
+        TOP_RIGHT = 0x04,
+        RIGHT = 0x08,
+        BOTTOM_RIGHT = 0x10,
+        DOWN = 0x20,
+        BOTTOM_LEFT = 0x40,
+        LEFT = 0x80,
+        CENTER = 0x100,
         RIGHT_SIDE = TOP_RIGHT | RIGHT | BOTTOM_RIGHT,
         LEFT_SIDE = TOP_LEFT | LEFT | BOTTOM_LEFT,
         AROUND = RIGHT_SIDE | LEFT_SIDE
@@ -152,7 +154,7 @@ namespace Battle
         // index, or an empty Position object if this index is unreachable for this unit
         // on the current turn. if 'speed' is set, then this value will be used to check
         // the position reachability instead of the speed returned by 'unit'.
-        static Position GetReachable( const Unit & unit, const int32_t dst, const std::optional<uint32_t> speed = {} );
+        static Position GetReachable(const Unit& unit, int32_t dst, std::optional<uint32_t> speed = {}, bool skipTail = false);
 
         bool isEmpty() const;
 

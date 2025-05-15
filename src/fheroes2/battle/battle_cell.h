@@ -44,6 +44,8 @@ namespace Battle
         BOTTOM_LEFT = 0x10,
         LEFT = 0x20,
         CENTER = 0x40,
+        UP = 0x80,
+        DOWN = 0x100,
         RIGHT_SIDE = TOP_RIGHT | RIGHT | BOTTOM_RIGHT,
         LEFT_SIDE = TOP_LEFT | LEFT | BOTTOM_LEFT,
         AROUND = RIGHT_SIDE | LEFT_SIDE

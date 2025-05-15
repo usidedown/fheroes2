@@ -647,6 +647,10 @@ namespace
             return Cursor::SWORD_BOTTOMRIGHT;
         case Battle::LEFT:
             return Cursor::SWORD_RIGHT;
+        case Battle::UP:
+            return Cursor::SWORD_TOP;
+        case Battle::DOWN:
+            return Cursor::SWORD_BOTTOM;
         default:
             break;
         }
@@ -668,6 +672,10 @@ namespace
             return Battle::TOP_LEFT;
         case Cursor::SWORD_RIGHT:
             return Battle::LEFT;
+        case Cursor::SWORD_TOP:
+            return Battle::UP;
+        case Cursor::SWORD_BOTTOM:
+            return Battle::DOWN;
         default:
             break;
         }
@@ -2085,7 +2093,8 @@ void Battle::Interface::RedrawCover()
             highlightedCells.emplace( pos.GetTail() );
         }
         else if ( cursorType == Cursor::SWORD_TOPLEFT || cursorType == Cursor::SWORD_TOPRIGHT || cursorType == Cursor::SWORD_BOTTOMLEFT
-                  || cursorType == Cursor::SWORD_BOTTOMRIGHT || cursorType == Cursor::SWORD_LEFT || cursorType == Cursor::SWORD_RIGHT ) {
+                  || cursorType == Cursor::SWORD_BOTTOMRIGHT || cursorType == Cursor::SWORD_LEFT || cursorType == Cursor::SWORD_RIGHT 
+                  || cursorType == Cursor::SWORD_TOP || cursorType == Cursor::SWORD_BOTTOM) {
             highlightedCells.emplace( cell );
 
             int direction = 0;
@@ -2107,12 +2116,20 @@ void Battle::Interface::RedrawCover()
             else if ( cursorType == Cursor::SWORD_RIGHT ) {
                 direction = LEFT;
             }
+            else if ( cursorType == Cursor::SWORD_TOP ) {
+                direction = UP;
+            }
+            else if ( cursorType == Cursor::SWORD_BOTTOM ) {
+                direction = DOWN;
+            }
             else {
                 assert( 0 );
             }
 
             const Position pos = Position::GetReachable( *_currentUnit, Board::GetIndexDirection( _curentCellIndex, direction ) );
-            assert( pos.GetHead() != nullptr );
+            if ( pos.GetHead() == nullptr ) {
+                assert( false );
+            }
 
             highlightedCells.emplace( pos.GetHead() );
 
@@ -2612,10 +2629,38 @@ int Battle::Interface::GetBattleCursor( std::string & statusMsg ) const
             // Find all possible directions where the current monster can attack.
             std::set<int> availableAttackDirection;
 
-            for ( const int direction : { BOTTOM_RIGHT, BOTTOM_LEFT, RIGHT, TOP_RIGHT, TOP_LEFT, LEFT } ) {
-                if ( Board::isValidDirection( _curentCellIndex, direction )
-                     && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( _curentCellIndex, direction ) ) ) {
-                    availableAttackDirection.emplace( direction );
+            
+            if ( _currentUnit->isWide() ) {
+                const int32_t rightIdx = _curentCellIndex;
+                const int32_t leftIdx = _curentCellIndex - 1;
+
+                for ( const int direction : { BOTTOM_RIGHT, RIGHT, TOP_RIGHT } ) {
+                    if ( Board::isValidDirection( rightIdx, direction ) && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( rightIdx, direction ) ) ) {
+                        availableAttackDirection.emplace( direction );
+                    }
+                }
+
+                for ( const int direction : { BOTTOM_LEFT, TOP_LEFT, LEFT } ) {
+                    if ( Board::isValidDirection( leftIdx, direction ) && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( leftIdx, direction ) ) ) {
+                        availableAttackDirection.emplace( direction );
+                    }
+                }
+
+                if ( Maps::isValidDirection( leftIdx, TOP_RIGHT ) && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( leftIdx, TOP_RIGHT ) ) ) {
+                    availableAttackDirection.emplace( UP );
+                }
+
+                if ( Maps::isValidDirection( leftIdx, BOTTOM_RIGHT ) && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( leftIdx, BOTTOM_RIGHT ) ) ) {
+                    availableAttackDirection.emplace( DOWN );
+                }
+            }
+            else
+            {
+                for ( const int direction : { BOTTOM_RIGHT, BOTTOM_LEFT, RIGHT, TOP_RIGHT, TOP_LEFT, LEFT } ) {
+                    if ( Board::isValidDirection( _curentCellIndex, direction )
+                         && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( _curentCellIndex, direction ) ) ) {
+                        availableAttackDirection.emplace( direction );
+                    }
                 }
             }
 

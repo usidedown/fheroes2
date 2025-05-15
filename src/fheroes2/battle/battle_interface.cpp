@@ -647,6 +647,10 @@ namespace
             return Cursor::SWORD_BOTTOMRIGHT;
         case Battle::LEFT:
             return Cursor::SWORD_RIGHT;
+        case Battle::DOWN:
+            return Cursor::SWORD_TOP;
+        case Battle::UP:
+            return Cursor::SWORD_BOTTOM;
         default:
             break;
         }
@@ -668,11 +672,28 @@ namespace
             return Battle::TOP_LEFT;
         case Cursor::SWORD_RIGHT:
             return Battle::LEFT;
+        case Cursor::SWORD_TOP:
+            return Battle::DOWN;
+        case Cursor::SWORD_BOTTOM:
+            return Battle::UP;
         default:
             break;
         }
 
         return Battle::UNKNOWN;
+    }
+
+    int intentDirectionToAttackDirection( const Battle::Unit & unit, const int dir )
+    {
+        using namespace Battle;
+
+        if ( dir == UP ) {
+            return unit.isReflect() ? TOP_LEFT : TOP_RIGHT;
+        }
+        if ( dir == DOWN ) {
+            return unit.isReflect() ? BOTTOM_LEFT : BOTTOM_RIGHT;
+        }
+        return dir;
     }
 }
 
@@ -2054,7 +2075,8 @@ void Battle::Interface::RedrawCover()
             highlightedCells.emplace( pos.GetTail() );
         }
         else if ( cursorType == Cursor::SWORD_TOPLEFT || cursorType == Cursor::SWORD_TOPRIGHT || cursorType == Cursor::SWORD_BOTTOMLEFT
-                  || cursorType == Cursor::SWORD_BOTTOMRIGHT || cursorType == Cursor::SWORD_LEFT || cursorType == Cursor::SWORD_RIGHT ) {
+                  || cursorType == Cursor::SWORD_BOTTOMRIGHT || cursorType == Cursor::SWORD_LEFT || cursorType == Cursor::SWORD_RIGHT || cursorType == Cursor::SWORD_TOP
+                  || cursorType == Cursor::SWORD_BOTTOM ) {
             highlightedCells.emplace( cell );
 
             int direction = 0;
@@ -2076,11 +2098,20 @@ void Battle::Interface::RedrawCover()
             else if ( cursorType == Cursor::SWORD_RIGHT ) {
                 direction = LEFT;
             }
+            else if ( cursorType == Cursor::SWORD_TOP ) {
+                direction = DOWN;
+            }
+            else if ( cursorType == Cursor::SWORD_BOTTOM ) {
+                direction = UP;
+            }
             else {
                 assert( 0 );
             }
 
-            const Position pos = Position::GetReachable( *_currentUnit, Board::GetIndexDirection( _curentCellIndex, direction ) );
+            // Wide creatures can attack from top/bottom, we need to ge the actual attack direction
+            const int attackDirection = intentDirectionToAttackDirection( *_currentUnit, direction );
+            const int32_t dst = Board::GetIndexDirection( _curentCellIndex, attackDirection );
+            const Position pos = Position::GetReachable( *_currentUnit, dst );
             assert( pos.GetHead() != nullptr );
 
             highlightedCells.emplace( pos.GetHead() );
@@ -2088,11 +2119,30 @@ void Battle::Interface::RedrawCover()
             if ( _currentUnit->isWide() ) {
                 assert( pos.GetTail() != nullptr );
 
-                highlightedCells.emplace( pos.GetTail() );
+                // if the intent direction means tail attack, we might need to move the highlighted cells by one
+                const auto tryHighlightTailAttack
+                    = [this, &highlightedCells, direction, dst]( const int moveDirection, const int directionTop, const int directionBottom ) -> bool {
+                    if ( ( direction == directionTop || direction == directionBottom ) && Board::isValidDirection( dst, moveDirection ) ) {
+                        const int32_t move_candidate = Board::GetIndexDirection( dst, moveDirection );
+                        Position position = Position::GetReachable( *_currentUnit, move_candidate );
+                        if ( position.GetHead() != nullptr ) {
+                            highlightedCells.emplace( position.GetHead() );
+                            highlightedCells.emplace( position.GetTail() );
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                const bool wasMoved
+                    = _currentUnit->isReflect() ? tryHighlightTailAttack( LEFT, TOP_LEFT, BOTTOM_LEFT ) : tryHighlightTailAttack( RIGHT, TOP_RIGHT, BOTTOM_RIGHT );
+
+                if ( !wasMoved ) {
+                    highlightedCells.emplace( pos.GetTail() );
+                }
             }
 
             if ( _currentUnit->isDoubleCellAttack() ) {
-                const Cell * secondAttackedCell = Board::GetCell( _curentCellIndex, Board::GetReflectDirection( direction ) );
+                const Cell * secondAttackedCell = Board::GetCell( _curentCellIndex, Board::GetReflectDirection( attackDirection ) );
 
                 if ( secondAttackedCell ) {
                     highlightedCells.emplace( secondAttackedCell );
@@ -2585,6 +2635,32 @@ int Battle::Interface::GetBattleCursor( std::string & statusMsg ) const
                 if ( Board::isValidDirection( _curentCellIndex, direction )
                      && Board::CanAttackFromCell( *_currentUnit, Board::GetIndexDirection( _curentCellIndex, direction ) ) ) {
                     availableAttackDirection.emplace( direction );
+                }
+            }
+
+            // Wide monsters can also attack from the top and bottom.
+            if ( _currentUnit->isWide() ) {
+                const auto checkTopBottom = [this]( const int topOrBottomDirection, const int leftDirection, const int rightDirection ) {
+                    const int32_t dst = Board::GetIndexDirection( _curentCellIndex, topOrBottomDirection );
+                    if ( !Board::isValidDirection( _curentCellIndex, leftDirection ) || !Board::isValidDirection( _curentCellIndex, rightDirection ) ) {
+                        return false;
+                    }
+                    Position position = Position::GetReachable( *_currentUnit, dst );
+                    Cell * head = position.GetHead();
+                    // Position must be both reachable and not "fixed" to be a tail attack. Tail attacks are covered above.
+                    return head != nullptr && head->GetIndex() == dst;
+                };
+
+                // Attack from the top is actually from the TOP_RIGHT, where the head is.
+                const int32_t topDirection = _currentUnit->isReflect() ? TOP_LEFT : TOP_RIGHT;
+                if ( checkTopBottom( topDirection, TOP_LEFT, TOP_RIGHT ) ) {
+                    availableAttackDirection.emplace( UP );
+                }
+
+                // Attack from the bottom is actually from the BOTTOM_RIGHT, where the head is.
+                const int32_t bottomDirection = _currentUnit->isReflect() ? BOTTOM_LEFT : BOTTOM_RIGHT;
+                if ( checkTopBottom( bottomDirection, BOTTOM_LEFT, BOTTOM_RIGHT ) ) {
+                    availableAttackDirection.emplace( DOWN );
                 }
             }
 
@@ -3366,9 +3442,11 @@ void Battle::Interface::MouseLeftClickBoardAction( const int themes, const Cell 
             break;
 
         case Cursor::SWORD_TOPLEFT:
+        case Cursor::SWORD_TOP:
         case Cursor::SWORD_TOPRIGHT:
         case Cursor::SWORD_RIGHT:
         case Cursor::SWORD_BOTTOMRIGHT:
+        case Cursor::SWORD_BOTTOM:
         case Cursor::SWORD_BOTTOMLEFT:
         case Cursor::SWORD_LEFT: {
             if ( !isConfirmed ) {
@@ -3377,11 +3455,49 @@ void Battle::Interface::MouseLeftClickBoardAction( const int themes, const Cell 
 
             const int dir = GetDirectionFromCursorSword( themes );
 
-            if ( unitOnCell && Board::isValidDirection( index, dir ) ) {
-                const int32_t move = fixupDestinationCell( *_currentUnit, Board::GetIndexDirection( index, dir ) );
+            if ( !unitOnCell ) {
+                break;
+            }
+
+            if ( !_currentUnit->isWide() && Board::isValidDirection( index, dir ) ) {
+                const int32_t move = Board::GetIndexDirection( index, dir );
 
                 actions.emplace_back( Command::ATTACK, _currentUnit->GetUID(), unitOnCell->GetUID(), ( _currentUnit->GetHeadIndex() == move ? -1 : move ), index,
                                       Board::GetReflectDirection( dir ) );
+
+                humanturn_exit = true;
+            }
+
+            if ( _currentUnit->isWide() ) {
+                // Wide creatures can attack from top/bottom, we need to ge the actual attack direction
+                const int attack_dir = intentDirectionToAttackDirection( *_currentUnit, dir );
+                if ( !Board::isValidDirection( index, attack_dir ) ) {
+                    break;
+                }
+
+                int32_t move = Board::GetIndexDirection( index, attack_dir );
+                // Some attacks may require a small nudge, but not top/bottom attacks
+                if ( attack_dir == dir ) {
+                    move = fixupDestinationCell( *_currentUnit, move );
+                }
+                // if the intent direction means tail attack, we might need to move the highlighted cells by one
+                const auto adjustForTailAttack = [this, dir, &move]( const int moveDirection, const int topDirection, const int bottomDirection ) {
+                    if ( ( dir == topDirection || dir == bottomDirection ) && Board::isValidDirection( move, moveDirection ) ) {
+                        const int32_t move_candidate = Board::GetIndexDirection( move, moveDirection );
+                        if ( Position::GetReachable( *_currentUnit, move_candidate ).GetHead() != nullptr ) {
+                            move = move_candidate;
+                        }
+                    }
+                };
+                if ( _currentUnit->isReflect() ) {
+                    adjustForTailAttack( LEFT, TOP_LEFT, BOTTOM_LEFT );
+                }
+                else {
+                    adjustForTailAttack( RIGHT, TOP_RIGHT, BOTTOM_RIGHT );
+                }
+
+                actions.emplace_back( Command::ATTACK, _currentUnit->GetUID(), unitOnCell->GetUID(), ( _currentUnit->GetHeadIndex() == move ? -1 : move ), index,
+                                      Board::GetReflectDirection( attack_dir ) );
 
                 humanturn_exit = true;
             }

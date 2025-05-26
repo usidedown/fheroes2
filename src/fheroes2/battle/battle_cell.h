@@ -38,11 +38,11 @@ namespace Battle
     {
         UNKNOWN = 0x00,
         TOP_LEFT = 0x01,
-        UP = 0x02,
+        TOP = 0x02,
         TOP_RIGHT = 0x04,
         RIGHT = 0x08,
         BOTTOM_RIGHT = 0x10,
-        DOWN = 0x20,
+        BOTTOM = 0x20,
         BOTTOM_LEFT = 0x40,
         LEFT = 0x80,
         CENTER = 0x100,

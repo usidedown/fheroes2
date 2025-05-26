@@ -647,9 +647,9 @@ namespace
             return Cursor::SWORD_BOTTOMRIGHT;
         case Battle::LEFT:
             return Cursor::SWORD_RIGHT;
-        case Battle::DOWN:
+        case Battle::BOTTOM:
             return Cursor::SWORD_TOP;
-        case Battle::UP:
+        case Battle::TOP:
             return Cursor::SWORD_BOTTOM;
         default:
             break;
@@ -673,9 +673,9 @@ namespace
         case Cursor::SWORD_RIGHT:
             return Battle::LEFT;
         case Cursor::SWORD_TOP:
-            return Battle::DOWN;
+            return Battle::BOTTOM;
         case Cursor::SWORD_BOTTOM:
-            return Battle::UP;
+            return Battle::TOP;
         default:
             break;
         }
@@ -687,10 +687,10 @@ namespace
     {
         using namespace Battle;
 
-        if ( dir == UP ) {
+        if ( dir == TOP ) {
             return unit.isReflect() ? TOP_LEFT : TOP_RIGHT;
         }
-        if ( dir == DOWN ) {
+        if ( dir == BOTTOM ) {
             return unit.isReflect() ? BOTTOM_LEFT : BOTTOM_RIGHT;
         }
         return dir;
@@ -2099,10 +2099,10 @@ void Battle::Interface::RedrawCover()
                 direction = LEFT;
             }
             else if ( cursorType == Cursor::SWORD_TOP ) {
-                direction = DOWN;
+                direction = BOTTOM;
             }
             else if ( cursorType == Cursor::SWORD_BOTTOM ) {
-                direction = UP;
+                direction = TOP;
             }
             else {
                 assert( 0 );
@@ -2654,13 +2654,13 @@ int Battle::Interface::GetBattleCursor( std::string & statusMsg ) const
                 // Attack from the top is actually from the TOP_RIGHT, where the head is.
                 const int32_t topDirection = _currentUnit->isReflect() ? TOP_LEFT : TOP_RIGHT;
                 if ( checkTopBottom( topDirection, TOP_LEFT, TOP_RIGHT ) ) {
-                    availableAttackDirection.emplace( UP );
+                    availableAttackDirection.emplace( TOP );
                 }
 
                 // Attack from the bottom is actually from the BOTTOM_RIGHT, where the head is.
                 const int32_t bottomDirection = _currentUnit->isReflect() ? BOTTOM_LEFT : BOTTOM_RIGHT;
                 if ( checkTopBottom( bottomDirection, BOTTOM_LEFT, BOTTOM_RIGHT ) ) {
-                    availableAttackDirection.emplace( DOWN );
+                    availableAttackDirection.emplace( BOTTOM );
                 }
             }
 

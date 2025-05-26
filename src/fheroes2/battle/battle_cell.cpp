@@ -292,7 +292,7 @@ Battle::CellDirection Battle::Cell::GetTriangleDirection( const fheroes2::Point 
         return TOP_LEFT;
     }
     if ( inABC( pt, _coord[0], one_half, two_half ) ) {
-        return UP;
+        return TOP;
     }
     if ( inABC( pt, _coord[0], two_half, _coord[3] ) ) {
         return TOP_RIGHT;
@@ -304,7 +304,7 @@ Battle::CellDirection Battle::Cell::GetTriangleDirection( const fheroes2::Point 
         return BOTTOM_RIGHT;
     }
     if ( inABC( pt, _coord[0], four_half, five_half ) ) {
-        return DOWN;
+        return BOTTOM;
     }
     if ( inABC( pt, _coord[0], five_half, _coord[6] ) ) {
         return BOTTOM_LEFT;

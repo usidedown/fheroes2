@@ -40,6 +40,11 @@ target_include_directories(
 	engine
 	PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+	../fheroes2/ai
+	../fheroes2/game
+	../fheroes2/kingdom
+	../fheroes2/maps
+	../fheroes2/system
 	)
 
 target_link_libraries(

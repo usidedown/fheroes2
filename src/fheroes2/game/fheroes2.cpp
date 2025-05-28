@@ -72,6 +72,7 @@
 #include "image_palette.h"
 #include "localevent.h"
 #include "logging.h"
+#include "math_base.h"
 #include "render_processor.h"
 #include "screen.h"
 #include "settings.h"

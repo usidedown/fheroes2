@@ -22,6 +22,13 @@ ifndef FHEROES2_WITH_SYSTEM_SMACKER
 CCFLAGS := $(CCFLAGS) -I../../thirdparty/libsmacker
 endif
 
+CCFLAGS := $(CCFLAGS) -I../../engine
+CCFLAGS := $(CCFLAGS) -I../../fheroes2/ai
+CCFLAGS := $(CCFLAGS) -I../../fheroes2/game
+CCFLAGS := $(CCFLAGS) -I../../fheroes2/kingdom
+CCFLAGS := $(CCFLAGS) -I../../fheroes2/maps
+CCFLAGS := $(CCFLAGS) -I../../fheroes2/system
+
 SOURCEDIR := ../../engine
 
 .PHONY: all clean

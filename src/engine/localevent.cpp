@@ -64,6 +64,7 @@
 #include "logging.h"
 #include "render_processor.h"
 #include "screen.h"
+#include "settings.h"
 
 namespace
 {
@@ -426,6 +427,7 @@ namespace EventProcessing
             updateDisplay = false;
 
             SDL_Event event;
+            Settings & conf = Settings::Get();
 
             while ( SDL_PollEvent( &event ) ) {
                 // Most SDL events should be processed sequentially one event at a time, but for some
@@ -442,6 +444,9 @@ namespace EventProcessing
                         }
                         processImmediately = false;
                         break;
+                    }
+                    if ( event.window.event == SDL_WINDOWEVENT_MOVED ) {
+                        conf.setStartWindowPos( { event.window.data1, event.window.data2 } );
                     }
                     if ( onWindowEvent( event.window ) ) {
                         updateDisplay = true;

@@ -264,7 +264,7 @@ void Battle::Arena::BattleProcess( Unit & attacker, Unit & defender, int32_t tgt
             // The built-in spell can only be applied to one target. If there are multiple
             // targets eligible for this spell, then we should randomly select only one.
             if ( spellTargets.size() > 1 ) {
-                const Unit * selectedUnit = _randomGenerator.Get( spellTargets ).defender;
+                const Unit * selectedUnit = Rand::GetWithGen( spellTargets, _randomGenerator ).defender;
 
                 spellTargets.erase( std::remove_if( spellTargets.begin(), spellTargets.end(),
                                                     [selectedUnit]( const TargetInfo & v ) { return v.defender != selectedUnit; } ),
@@ -604,9 +604,8 @@ void Battle::Arena::ApplyActionAttack( Command & cmd )
     Unit * defender = GetTroopUID( defenderUID );
 
     if ( !checkParameters( attacker, defender, dst, tgt, dir ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "attacker uid: " << GetHexString( attackerUID ) << ", defender uid: " << GetHexString( defenderUID ) << ", dst: " << dst << ", tgt: " << tgt
-                   << ", dir: " << dir )
+        ERROR_LOG( "Invalid parameters: " << "attacker uid: " << GetHexString( attackerUID ) << ", defender uid: " << GetHexString( defenderUID ) << ", dst: " << dst
+                                          << ", tgt: " << tgt << ", dir: " << dir )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -681,8 +680,7 @@ void Battle::Arena::ApplyActionMove( Command & cmd )
     Unit * unit = GetTroopUID( uid );
 
     if ( !checkParameters( unit, dst ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "uid: " << GetHexString( uid ) << ", dst: " << dst )
+        ERROR_LOG( "Invalid parameters: " << "uid: " << GetHexString( uid ) << ", dst: " << dst )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -715,8 +713,7 @@ void Battle::Arena::ApplyActionSkip( Command & cmd )
     Unit * unit = GetTroopUID( uid );
 
     if ( !checkParameters( unit ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "uid: " << GetHexString( uid ) )
+        ERROR_LOG( "Invalid parameters: " << "uid: " << GetHexString( uid ) )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -762,8 +759,7 @@ void Battle::Arena::ApplyActionMorale( Command & cmd )
     Unit * unit = GetTroopUID( uid );
 
     if ( !checkParameters( unit, morale ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "uid: " << GetHexString( uid ) << ", morale: " << ( morale ? "good" : "bad" ) )
+        ERROR_LOG( "Invalid parameters: " << "uid: " << GetHexString( uid ) << ", morale: " << ( morale ? "good" : "bad" ) )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -918,7 +914,7 @@ Battle::TargetsInfo Battle::Arena::GetTargetsForDamage( const Unit & attacker, U
         if ( const auto abilityIter = std::find( attackerAbilities.begin(), attackerAbilities.end(), fheroes2::MonsterAbilityType::ENEMY_HALVING );
              abilityIter != attackerAbilities.end() ) {
             const uint32_t halvingDamage = ( defender.GetCount() / 2 + defender.GetCount() % 2 ) * defender.Monster::GetHitPoints();
-            if ( halvingDamage > res.damage && _randomGenerator.Get( 1, 100 ) <= abilityIter->percentage ) {
+            if ( halvingDamage > res.damage && Rand::GetWithGen( 1, 100, _randomGenerator ) <= abilityIter->percentage ) {
                 // Replaces damage, not adds extra damage
                 res.damage = std::min( defender.GetHitPoints(), halvingDamage );
 
@@ -1018,7 +1014,7 @@ std::vector<Battle::Unit *> Battle::Arena::FindChainLightningTargetIndexes( cons
             const uint32_t resist = foundTroops[i]->GetMagicResist( Spell::CHAINLIGHTNING, hero );
             assert( resist < 100 );
 
-            if ( !applyRandomMagicResistance || resist < _randomGenerator.Get( 1, 100 ) ) {
+            if ( !applyRandomMagicResistance || resist < Rand::GetWithGen( 1, 100, _randomGenerator ) ) {
                 ignoredTroops.push_back( foundTroops[i] );
                 result.push_back( foundTroops[i] );
                 foundTroops.erase( foundTroops.begin() + i );
@@ -1054,7 +1050,7 @@ Battle::TargetsInfo Battle::Arena::TargetsForChainLightning( const HeroBase * he
 
     const uint32_t firstUnitResist = unit->GetMagicResist( Spell::CHAINLIGHTNING, hero );
 
-    if ( firstUnitResist >= 100 || ( applyRandomMagicResistance && firstUnitResist >= _randomGenerator.Get( 1, 100 ) ) ) {
+    if ( firstUnitResist >= 100 || ( applyRandomMagicResistance && firstUnitResist >= Rand::GetWithGen( 1, 100, _randomGenerator ) ) ) {
         targets.emplace_back();
         TargetInfo & res = targets.back();
         res.defender = unit;
@@ -1200,7 +1196,7 @@ Battle::TargetsInfo Battle::Arena::GetTargetsForSpell( const HeroBase * hero, co
         const uint32_t resist = tgt.defender->GetMagicResist( spell, hero );
         assert( resist < 100 );
 
-        if ( applyRandomMagicResistance && resist >= _randomGenerator.Get( 1, 100 ) ) {
+        if ( applyRandomMagicResistance && resist >= Rand::GetWithGen( 1, 100, _randomGenerator ) ) {
             tgt.resist = true;
         }
     }
@@ -1229,8 +1225,7 @@ void Battle::Arena::ApplyActionTower( Command & cmd )
     Unit * unit = GetTroopUID( uid );
 
     if ( !checkParameters( tower, unit ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "tower: " << type << ", uid: " << GetHexString( uid ) )
+        ERROR_LOG( "Invalid parameters: " << "tower: " << type << ", uid: " << GetHexString( uid ) )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -1296,8 +1291,8 @@ void Battle::Arena::ApplyActionCatapult( Command & cmd )
         using TargetUnderlyingType = std::underlying_type_t<decltype( target )>;
 
         if ( !checkParameters( target, damage ) ) {
-            ERROR_LOG( "Invalid parameters: "
-                       << "target: " << static_cast<TargetUnderlyingType>( target ) << ", damage: " << damage << ", hit: " << ( hit ? "yes" : "no" ) )
+            ERROR_LOG( "Invalid parameters: " << "target: " << static_cast<TargetUnderlyingType>( target ) << ", damage: " << damage
+                                              << ", hit: " << ( hit ? "yes" : "no" ) )
 
 #ifdef WITH_DEBUG
             assert( 0 );
@@ -1345,8 +1340,7 @@ void Battle::Arena::ApplyActionToggleAutoCombat( Command & cmd )
     const PlayerColor color = static_cast<PlayerColor>( cmd.GetNextValue() );
 
     if ( !checkParameters( color ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "color: " << Color::String( color ) << " (" << static_cast<int>( color ) << ")" )
+        ERROR_LOG( "Invalid parameters: " << "color: " << Color::String( color ) << " (" << static_cast<int>( color ) << ")" )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -1513,8 +1507,7 @@ void Battle::Arena::ApplyActionSpellTeleport( Command & cmd )
     const Cell * cell = Board::GetCell( dst );
 
     if ( !checkParameters( unit, cell ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "src: " << src << ", dst: " << dst )
+        ERROR_LOG( "Invalid parameters: " << "src: " << src << ", dst: " << dst )
 
 #ifdef WITH_DEBUG
         assert( 0 );
@@ -1576,11 +1569,11 @@ void Battle::Arena::ApplyActionSpellEarthquake( const Command & /* cmd */ )
             // Reduce the chance of bridge demolition by an extra 50% chance to "miss" it by the Earthquake spell.
             // It is done to be closer to the original game behavior where bridge demolition by this spell
             // is more rare than the demolition of the other structures.
-            if ( target == CastleDefenseStructure::BRIDGE && _randomGenerator.Get( 0, 1 ) == 0 ) {
+            if ( target == CastleDefenseStructure::BRIDGE && Rand::GetWithGen( 0, 1, _randomGenerator ) == 0 ) {
                 return 0;
             }
 
-            return static_cast<int>( _randomGenerator.Get( minDmg, maxDmg ) );
+            return static_cast<int>( Rand::GetWithGen( minDmg, maxDmg, _randomGenerator ) );
         }();
         assert( damage >= 0 );
 
@@ -1640,8 +1633,7 @@ void Battle::Arena::ApplyActionSpellMirrorImage( Command & cmd )
     Unit * unit = GetTroopBoard( who );
 
     if ( !checkParameters( unit ) ) {
-        ERROR_LOG( "Invalid parameters: "
-                   << "who: " << who )
+        ERROR_LOG( "Invalid parameters: " << "who: " << who )
 
 #ifdef WITH_DEBUG
         assert( 0 );

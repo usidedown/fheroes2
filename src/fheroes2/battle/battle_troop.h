@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <random>
 #include <string>
 #include <utility>
 #include <vector>
@@ -123,8 +124,8 @@ namespace Battle
             _mirrorUnit = ptr;
         }
 
-        void SetRandomMorale( Rand::DeterministicRandomGenerator & randomGenerator );
-        void SetRandomLuck( Rand::DeterministicRandomGenerator & randomGenerator );
+        void SetRandomMorale( std::mt19937 & randomGenerator );
+        void SetRandomLuck( std::mt19937 & randomGenerator );
         void NewTurn();
 
         bool isFlying() const;
@@ -192,7 +193,7 @@ namespace Battle
         // is set to true, then the value of 'skipMovedCheck' doesn't matter.
         uint32_t GetSpeed( const bool skipStandingCheck, const bool skipMovedCheck ) const;
 
-        uint32_t GetDamage( const Unit & enemy, Rand::DeterministicRandomGenerator & randomGenerator ) const;
+        uint32_t GetDamage( const Unit & enemy, std::mt19937 & randomGenerator ) const;
 
         // Returns the threat level of this unit, calculated as if it attacked the 'defender' unit. See
         // the implementation for details.
@@ -306,7 +307,7 @@ namespace Battle
         void PostKilledAction();
 
         uint32_t GetMagicResist( const Spell & spell, const HeroBase * applyingHero ) const;
-        Spell GetSpellMagic( Rand::DeterministicRandomGenerator & randomGenerator ) const;
+        Spell GetSpellMagic( std::mt19937 & randomGenerator ) const;
 
         const HeroBase * GetCommander() const;
         // If the color of the current unit is valid (i.e. this unit is not under the influence of a Berserker spell), then returns the commander of the army with the

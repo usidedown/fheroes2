@@ -25,17 +25,13 @@
 
 #include <cstdint>
 #include <map>
+#include <random>
 #include <vector>
 
 #include "battle.h"
 #include "math_base.h"
 
 class HeroBase;
-
-namespace Rand
-{
-    class DeterministicRandomGenerator;
-}
 
 namespace Battle
 {
@@ -48,8 +44,7 @@ namespace Battle
         Catapult & operator=( const Catapult & ) = delete;
 
         static const std::vector<CastleDefenseStructure> & getAllowedTargets();
-        static CastleDefenseStructure GetTarget( const std::map<CastleDefenseStructure, int> & stateOfCatapultTargets,
-                                                 Rand::DeterministicRandomGenerator & randomGenerator );
+        static CastleDefenseStructure GetTarget( const std::map<CastleDefenseStructure, int> & stateOfCatapultTargets, std::mt19937 & randomGenerator );
         static fheroes2::Point GetTargetPosition( const CastleDefenseStructure target, const bool hit );
 
         uint32_t GetShots() const
@@ -57,8 +52,8 @@ namespace Battle
             return catShots;
         }
 
-        int GetDamage( Rand::DeterministicRandomGenerator & randomGenerator ) const;
-        bool IsNextShotHit( Rand::DeterministicRandomGenerator & randomGenerator ) const;
+        int GetDamage( std::mt19937 & randomGenerator ) const;
+        bool IsNextShotHit( std::mt19937 & randomGenerator ) const;
 
     private:
         uint32_t catShots;

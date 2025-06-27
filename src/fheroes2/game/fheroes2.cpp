@@ -28,6 +28,7 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -53,6 +54,14 @@
 #if defined( _WIN32 )
 #include <cassert>
 #endif
+
+#if !defined( __EMSCRIPTEN__ )
+#include <curl/curl.h>
+#else
+#include <emscripten/fetch.h>
+#endif // !defined ( __EMSCRIPTEN__ )
+
+#include <nlohmann/json.hpp>
 
 #include "agg.h"
 #include "agg_image.h"
@@ -275,6 +284,146 @@ namespace
         const ListFiles maps = Settings::FindFiles( "maps", ".mp2", false );
         return maps.size() == 1;
     }
+
+    struct ReleaseInfo
+    {
+        std::string html_url;
+        std::string tag_name;
+        std::string body;
+    };
+
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE( ReleaseInfo, html_url, tag_name, body )
+
+#if !defined( __EMSCRIPTEN__ )
+    size_t writeFunction( void * ptr, size_t size, size_t nmemb, std::string * data )
+    {
+        data->append( (char *)ptr, size * nmemb );
+        return size * nmemb;
+    }
+
+    struct CurlDeleter
+    {
+        void operator()( CURL * handle )
+        {
+            curl_easy_cleanup( handle );
+        }
+    };
+
+    using CurlCleaner = std::unique_ptr<CURL, CurlDeleter>;
+
+    struct SListDeleter
+    {
+        void operator()( struct curl_slist * list )
+        {
+            curl_slist_free_all( list );
+        }
+    };
+
+    using SListCleaner = std::unique_ptr<struct curl_slist, SListDeleter>;
+
+    class CurlMaybe
+    {
+    public:
+        explicit CurlMaybe( CURLcode status )
+            : _status( status )
+        {}
+
+        template <class F>
+        CurlMaybe & andThen( F && f )
+        {
+            if ( _status == CURLE_OK ) {
+                _status = std::invoke( std::forward<F>( f ) );
+            }
+            return *this;
+        }
+
+        explicit operator bool() const
+        {
+            return _status == CURLE_OK;
+        }
+
+    private:
+        CURLcode _status;
+    };
+#else
+    struct FetchDeleter
+    {
+        void operator()( emscripten_fetch_t * fetch )
+        {
+            emscripten_fetch_close( fetch );
+        }
+    };
+
+    using FetchCleaner = std::unique_ptr<emscripten_fetch_t, FetchDeleter>;
+
+#endif // !defined( __EMSCRIPTEN__ )
+
+    std::optional<ReleaseInfo> getVersion()
+    {
+        static constexpr const char * const githubUrl = "https://api.github.com/repos/ihhub/fheroes2/releases/latest";
+        static constexpr const char * const headerApiVersion = "X-GitHub-Api-Version: 2022-11-28";
+        static constexpr const char * const acceptHeader = "Accept: application/vnd.github+json";
+        const std::string userAgent = "fheroes2/" + Settings::GetVersion();
+
+#if !defined( __EMSCRIPTEN__ )
+        CURL * curl = curl_easy_init();
+        if ( curl == nullptr ) {
+            return std::nullopt;
+        }
+        CurlCleaner autoCurlCleanup( curl );
+
+        struct curl_slist * list = nullptr;
+        list = curl_slist_append( list, headerApiVersion );
+        if ( list == nullptr ) {
+            return std::nullopt;
+        }
+        SListCleaner autoFreeList( list );
+
+        list = curl_slist_append( list, acceptHeader );
+        if ( list == nullptr ) {
+            return std::nullopt;
+        }
+
+        std::string responseString;
+        std::string headerString;
+        CurlMaybe curlCall( CURLE_OK );
+        curlCall.andThen( [&] { return curl_easy_setopt( curl, CURLOPT_URL, githubUrl ); } )
+            .andThen( [&] { return curl_easy_setopt( curl, CURLOPT_NOPROGRESS, 1L ); } )
+            .andThen( [&] { return curl_easy_setopt( curl, CURLOPT_USERAGENT, userAgent.c_str() ); } )
+            .andThen( [&] { return curl_easy_setopt( curl, CURLOPT_HTTPHEADER, list ); } )
+            .andThen( [&] { return curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, writeFunction ); } )
+            .andThen( [&] { return curl_easy_setopt( curl, CURLOPT_WRITEDATA, &responseString ); } )
+            .andThen( [&] { return curl_easy_setopt( curl, CURLOPT_HEADERDATA, &headerString ); } )
+            .andThen( [&] { return curl_easy_perform( curl ); } );
+
+        long responseCode;
+        double elapsed;
+
+        curlCall.andThen( [&] { return curl_easy_getinfo( curl, CURLINFO_RESPONSE_CODE, &responseCode ); } ).andThen( [&] {
+            return curl_easy_getinfo( curl, CURLINFO_TOTAL_TIME, &elapsed );
+        } );
+
+        if ( !curlCall || responseCode != 200 ) {
+            return std::nullopt;
+        }
+#else
+        emscripten_fetch_attr_t attr;
+        emscripten_fetch_attr_init( &attr );
+        strcpy( attr.requestMethod, "GET" );
+        attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_REPLACE;
+        attr.requestHeaders = { "User-Agent", userAgent.c_str(), "Accept", "application/vnd.github_json", "X-GitHub-Api-Version", "2022-11-28" };
+        emscripten_fetch_t * fetch = emscripten_fetch( &attr, githubUrl );
+        FetchCleaner autoFetchCleanup( fetch );
+        if ( fetch->status != 200 ) {
+            return std::nullopt;
+        }
+        responseString.reserve( fetch->numBytes );
+        responseString.assign( fetch->data, fetch->data + fetch->numBytes );
+#endif // !defined ( __EMSCRIPTEN__ )
+
+        nlohmann::json responseJson = nlohmann::json::parse( responseString );
+        return responseJson.template get<ReleaseInfo>();
+    }
 }
 
 int main( int argc, char ** argv )
@@ -356,6 +505,8 @@ int main( int argc, char ** argv )
 
         // Initialize game data.
         Game::Init();
+
+        const auto version = getVersion();
 
         if ( conf.isShowIntro() ) {
             fheroes2::showTeamInfo();

@@ -38,11 +38,13 @@
     <Import Project="VisualStudio\fheroes2\sources.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)'=='Debug-SDL2'" Label="PropertySheets">
+    <Import Project="VisualStudio\curl.props" />
     <Import Project="VisualStudio\Debug.props" />
     <Import Project="VisualStudio\SDL2.props" />
     <Import Project="VisualStudio\fheroes2\Debug.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)'=='Release-SDL2'" Label="PropertySheets">
+    <Import Project="VisualStudio\curl.props" />
     <Import Project="VisualStudio\Release.props" />
     <Import Project="VisualStudio\SDL2.props" />
     <Import Project="VisualStudio\fheroes2\Release.props" />
